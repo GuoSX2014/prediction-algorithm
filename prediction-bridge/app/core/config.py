@@ -92,6 +92,10 @@ class ConcurrencySection(BaseModel):
     thread_pool_size: int = 2
 
 
+class HealthSection(BaseModel):
+    probe_cache_ttl_sec: int = 600
+
+
 class LoggingSection(BaseModel):
     level: str = "INFO"
     dir: str = "/var/log/prediction-bridge"
@@ -125,6 +129,7 @@ class Settings(BaseSettings):
     feishu: FeishuSection = Field(default_factory=FeishuSection)
     task_store: TaskStoreSection = Field(default_factory=TaskStoreSection)
     concurrency: ConcurrencySection = Field(default_factory=ConcurrencySection)
+    health: HealthSection = Field(default_factory=HealthSection)
     logging: LoggingSection = Field(default_factory=LoggingSection)
 
     # Path of the YAML that was loaded (informational).

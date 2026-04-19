@@ -41,7 +41,7 @@ class FeishuClient:
         if not force and self._token and time.time() < self._token_exp - 60:
             return self._token
 
-        logger.info(
+        logger.debug(
             "fetching tenant_access_token",
             extra={"app_id": self._cfg.app_id, "app_secret": mask_secret(self._cfg.app_secret)},
         )

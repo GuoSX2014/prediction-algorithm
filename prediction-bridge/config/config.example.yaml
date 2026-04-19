@@ -67,6 +67,11 @@ concurrency:
   mode: serial
   thread_pool_size: 2
 
+health:
+  # Seconds to cache each dependency probe (minio / predictor / feishu) result.
+  # Raise this to reduce load and log noise from frequent container HEALTHCHECKs.
+  probe_cache_ttl_sec: 3600
+
 logging:
   level: INFO
   dir: /var/log/prediction-bridge
