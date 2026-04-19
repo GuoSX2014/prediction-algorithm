@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prediction-bridge"
+version = "0.1.0"
+description = "Bridge service wiring MinIO -> SFP-2 prediction -> Feishu notification."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "prediction-bridge maintainers" }]
+license = { text = "Proprietary" }
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.2.0",
+    "PyYAML>=6.0.1",
+    "httpx>=0.27.0",
+    "minio>=7.2.0",
+    "tenacity>=8.2.3",
+    "loguru>=0.7.2",
+    "jinja2>=3.1.3",
+    "python-multipart>=0.0.9",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.1.0",
+    "pytest-asyncio>=0.23.0",
+    "respx>=0.21.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.setuptools.package-data]
+"app.templates" = ["*.j2"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

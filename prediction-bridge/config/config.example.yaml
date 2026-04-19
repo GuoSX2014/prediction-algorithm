@@ -1,0 +1,76 @@
+app:
+  host: 0.0.0.0
+  port: 8080
+  api_prefix: /api/v1
+  callback_path: /notifications/processor
+
+callback:
+  # Reserved for future signature/shared-secret checks. Empty disables the middleware.
+  secret: ""
+
+minio:
+  endpoint: 112.126.80.142:29000
+  access_key: ""
+  secret_key: ""
+  secure: false
+  bucket: sxpx
+  # Object prefix inside the bucket (derived from download_url — e.g. "output/").
+  # Leave empty if object_name is already a full key.
+  object_prefix: output/
+  download_dir: /var/lib/prediction-bridge/downloads
+  md5_retry: 3
+  md5_retry_interval_sec: 5
+  # If True, even when the MinIO SDK fails the service falls back to download_url directly.
+  fallback_to_http: true
+  http_timeout_sec: 300
+
+storage:
+  traindata_root: /data/deploy/electricity-prediction/sfp2-deploy/traindata
+  on_conflict: overwrite     # overwrite | skip
+  keep_failed_artifacts: true
+
+predictor:
+  base_url: http://112.126.80.142:9527
+  rebuild_dataset_before_predict: false
+  timeout_sec: 60
+  retry: 3
+  retry_interval_sec: 10
+
+report:
+  output_dir: /var/lib/prediction-bridge/reports
+  template_path: app/templates/prediction.md.j2
+
+feishu:
+  enabled: true
+  app_id: cli_xxx
+  app_secret: ""
+  http_timeout_sec: 30
+  # Toggle the alert channel on fatal pipeline errors. Uses the first target.
+  alert_on_failure: true
+  targets:
+    - name: "二次调频日报群"
+      chat_id: oc_xxx
+      mention_all: true
+      mention_ids: []
+      mention_names: []
+      message: "请查阅 {predict_date} 预测结果。"
+
+task_store:
+  # in_memory | sqlite
+  backend: in_memory
+  sqlite_path: /var/lib/prediction-bridge/tasks.sqlite
+  # Time window in seconds in which the same (object_name, md5) returns the existing trace_id.
+  dedup_ttl_sec: 900
+
+concurrency:
+  # serial | thread_pool
+  mode: serial
+  thread_pool_size: 2
+
+logging:
+  level: INFO
+  dir: /var/log/prediction-bridge
+  rotation: "100 MB"
+  retention: "30 days"
+  json: true
+  console: true

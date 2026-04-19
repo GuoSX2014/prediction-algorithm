@@ -1,0 +1,25 @@
+[Unit]
+Description=prediction-bridge (processor -> MinIO -> SFP-2 predictor -> Feishu)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=prediction-bridge
+Group=prediction-bridge
+WorkingDirectory=/opt/prediction-bridge
+EnvironmentFile=/opt/prediction-bridge/.env
+Environment=PREDICTION_BRIDGE_CONFIG_PATH=/opt/prediction-bridge/config/config.yaml
+ExecStart=/opt/prediction-bridge/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8080
+Restart=on-failure
+RestartSec=5
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/prediction-bridge /var/log/prediction-bridge /data/deploy/electricity-prediction/sfp2-deploy/traindata
+
+[Install]
+WantedBy=multi-user.target

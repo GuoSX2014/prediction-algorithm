@@ -1,0 +1,22 @@
+# {{ predict_date }} 预测结果
+
+- 数据日期：{{ data_date }}
+- 预测目标日：{{ predict_date }}
+- 模型版本：{{ model_version }}
+- 生成时间：{{ generated_at }}
+- 渲染时间：{{ rendered_at }}
+- trace_id：{{ trace_id }}
+
+## 指标表
+
+| 时段 | 调频容量需求 (MW) | 边际排序价格 (元/MW) | 市场出清价格_预测均价 (元/MW) |
+|------|------------------:|--------------------:|------------------------------:|
+{% for seg in segment_keys -%}
+| {{ seg }} | {{ "%.3f"|format(segments[seg]['调频容量需求']) if segments[seg]['调频容量需求'] is not none else "-" }} | {{ "%.3f"|format(segments[seg]['边际排序价格']) if segments[seg]['边际排序价格'] is not none else "-" }} | {{ "%.3f"|format(segments[seg]['市场出清价格_预测均价']) if segments[seg]['市场出清价格_预测均价'] is not none else "-" }} |
+{% endfor %}
+
+## 原始响应
+
+```json
+{{ raw_json }}
+```
