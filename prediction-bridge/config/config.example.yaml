@@ -1,6 +1,6 @@
 app:
   host: 0.0.0.0
-  port: 8080
+  port: 28042
   api_prefix: /api/v1
   callback_path: /notifications/processor
 
@@ -10,14 +10,14 @@ callback:
 
 minio:
   endpoint: 112.126.80.142:29000
-  access_key: ""
-  secret_key: ""
+  access_key: admin
+  secret_key: password123
   secure: false
   bucket: sxpx
   # Object prefix inside the bucket (derived from download_url — e.g. "output/").
   # Leave empty if object_name is already a full key.
   object_prefix: output/
-  download_dir: /var/lib/prediction-bridge/downloads
+  download_dir: /data/deploy/prediction-bridge/downloads
   md5_retry: 3
   md5_retry_interval_sec: 5
   # If True, even when the MinIO SDK fails the service falls back to download_url directly.
@@ -37,19 +37,19 @@ predictor:
   retry_interval_sec: 10
 
 report:
-  output_dir: /var/lib/prediction-bridge/reports
+  output_dir: /data/deploy/prediction-bridge/reports
   template_path: app/templates/prediction.md.j2
 
 feishu:
   enabled: true
-  app_id: cli_xxx
-  app_secret: ""
+  app_id: cli_a952e1cea2a51bd3
+  app_secret: "72S5g0pdxsqnrlnar4YQrhT15Ez05tTO"
   http_timeout_sec: 30
   # Toggle the alert channel on fatal pipeline errors. Uses the first target.
   alert_on_failure: true
   targets:
     - name: "二次调频日报群"
-      chat_id: oc_xxx
+      chat_id: oc_573945e680f0308c7ba627d0a6827679
       mention_all: true
       mention_ids: []
       mention_names: []
@@ -58,7 +58,7 @@ feishu:
 task_store:
   # in_memory | sqlite
   backend: in_memory
-  sqlite_path: /var/lib/prediction-bridge/tasks.sqlite
+  sqlite_path: /data/deploy/prediction-bridge/tasks.sqlite
   # Time window in seconds in which the same (object_name, md5) returns the existing trace_id.
   dedup_ttl_sec: 900
 
@@ -69,7 +69,7 @@ concurrency:
 
 logging:
   level: INFO
-  dir: /var/log/prediction-bridge
+  dir: /data/deploy/log/prediction-bridge
   rotation: "100 MB"
   retention: "30 days"
   json: true

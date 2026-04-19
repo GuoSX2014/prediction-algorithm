@@ -7,9 +7,17 @@ services:
     container_name: prediction-bridge
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      # External 28042 (host-facing) -> container internal 8042
+      - "28042:8042"
     environment:
       PREDICTION_BRIDGE_CONFIG_PATH: /app/config/config.yaml
+      # Overrides — the mounted YAML is written for the bare-metal host.
+      # Inside the container the writable paths are /var/lib/... and /var/log/...
+      # (see Dockerfile), so force those via env vars regardless of YAML content.
+      MINIO__DOWNLOAD_DIR: /var/lib/prediction-bridge/downloads
+      REPORT__OUTPUT_DIR: /var/lib/prediction-bridge/reports
+      TASK_STORE__SQLITE_PATH: /var/lib/prediction-bridge/tasks.sqlite
+      LOGGING__DIR: /var/log/prediction-bridge
       # Secrets — override via .env or a secrets manager
       # MINIO__ACCESS_KEY:
       # MINIO__SECRET_KEY:
@@ -23,7 +31,7 @@ services:
       # IMPORTANT: point this at the SFP-2 predictor's traindata root.
       - /data/deploy/electricity-prediction/sfp2-deploy/traindata:/data/deploy/electricity-prediction/sfp2-deploy/traindata
     healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://127.0.0.1:8080/health', timeout=3).raise_for_status()"]
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://127.0.0.1:8042/health', timeout=3).raise_for_status()"]
       interval: 30s
       timeout: 5s
       retries: 3

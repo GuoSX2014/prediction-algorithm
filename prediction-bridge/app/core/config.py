@@ -21,7 +21,7 @@ DEFAULT_CONFIG_PATH = "config/config.yaml"
 
 class AppSection(BaseModel):
     host: str = "0.0.0.0"
-    port: int = 8080
+    port: int = 28042
     api_prefix: str = "/api/v1"
     callback_path: str = "/notifications/processor"
 

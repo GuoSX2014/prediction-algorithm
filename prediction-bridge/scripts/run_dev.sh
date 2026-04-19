@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-PORT="${1:-8080}"
+PORT="${1:-28042}"
 export PREDICTION_BRIDGE_CONFIG_PATH="${PREDICTION_BRIDGE_CONFIG_PATH:-$ROOT/config/config.yaml}"
 
 if [[ ! -f "$PREDICTION_BRIDGE_CONFIG_PATH" ]]; then

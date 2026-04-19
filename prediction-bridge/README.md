@@ -44,14 +44,15 @@ docker compose -f deploy/docker-compose.yaml up -d
 docker compose -f deploy/docker-compose.yaml logs -f
 ```
 
-默认挂载：
+默认挂载与端口映射：
 
 | 宿主机 | 容器 | 用途 |
 |---|---|---|
-| `./config/config.yaml` | `/app/config/config.yaml:ro` | 运行配置 |
+| `./config/config.yaml` | `/app/config/config.yaml:ro` | 运行配置（其中 `download_dir / output_dir / sqlite_path / logging.dir` 会被 compose 的环境变量覆盖为容器路径） |
 | 卷 `prediction_bridge_data` | `/var/lib/prediction-bridge` | 下载缓存、报告、任务 SQLite |
 | 卷 `prediction_bridge_logs` | `/var/log/prediction-bridge` | JSON 行日志 |
 | `/data/deploy/electricity-prediction/sfp2-deploy/traindata` | 同路径 | SFP-2 预测服务的训练数据目录 |
+| 端口 `28042`（宿主对外） | `8042`（容器内部） | 容器内监听 8042，对外映射为 28042 |
 
 敏感字段通过环境变量注入（compose `environment` / `.env`）：
 
@@ -64,10 +65,15 @@ FEISHU__APP_SECRET=...
 ### 2.2 裸机
 
 ```bash
-# 运行账户 & 目录
+# 运行账户 & 目录（宿主路径与 config.example.yaml 保持一致）
 sudo useradd --system --home-dir /opt/prediction-bridge prediction-bridge
-sudo mkdir -p /opt/prediction-bridge /var/lib/prediction-bridge /var/log/prediction-bridge
-sudo chown -R prediction-bridge:prediction-bridge /opt/prediction-bridge /var/lib/prediction-bridge /var/log/prediction-bridge
+sudo mkdir -p /opt/prediction-bridge \
+             /data/deploy/prediction-bridge/{downloads,reports} \
+             /data/deploy/log/prediction-bridge
+sudo chown -R prediction-bridge:prediction-bridge \
+    /opt/prediction-bridge \
+    /data/deploy/prediction-bridge \
+    /data/deploy/log/prediction-bridge
 
 # 部署
 sudo -u prediction-bridge git clone <repo> /opt/prediction-bridge
@@ -87,17 +93,17 @@ sudo systemctl status prediction-bridge
 
 ```bash
 cp config/config.example.yaml config/config.yaml
-./scripts/run_dev.sh 8080
+./scripts/run_dev.sh 28042
 ```
 
 ## 3. 接口
 
-全部接口：`http://<host>:8080/docs`（FastAPI 自动生成）。
+全部接口：`http://<host>:28042/docs`（FastAPI 自动生成）。
 
 ### 3.1 回调入口
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/v1/notifications/processor \
+curl -X POST http://127.0.0.1:28042/api/v1/notifications/processor \
   -H 'Content-Type: application/json' \
   -d '{
     "categories": ["实时市场出清概况", "日前市场出清概况", "抽蓄电站水位", "断面约束", "机组实际发电曲线"],
@@ -117,7 +123,7 @@ curl -X POST http://127.0.0.1:8080/api/v1/notifications/processor \
 ### 3.2 任务状态
 
 ```bash
-curl http://127.0.0.1:8080/api/v1/tasks/<trace_id>
+curl http://127.0.0.1:28042/api/v1/tasks/<trace_id>
 ```
 
 状态流转：`pending → downloading → extracting → predicting → notifying → done`（失败时为 `failed` 并带有 `error` 字段）。
@@ -125,7 +131,7 @@ curl http://127.0.0.1:8080/api/v1/tasks/<trace_id>
 ### 3.3 健康检查
 
 ```bash
-curl http://127.0.0.1:8080/health
+curl http://127.0.0.1:28042/health
 ```
 
 带 30 秒缓存的 MinIO / Predictor / Feishu 连通性探针。
@@ -136,7 +142,7 @@ curl http://127.0.0.1:8080/health
 
 | 路径 | 默认值 | 说明 |
 |---|---|---|
-| `app.host` / `app.port` | `0.0.0.0` / `8080` | 监听地址 |
+| `app.host` / `app.port` | `0.0.0.0` / `28042` | 监听地址（仅用作记录；实际端口由 `uvicorn --port` 决定：裸机 28042、容器内 8042） |
 | `app.api_prefix` | `/api/v1` | REST 前缀 |
 | `app.callback_path` | `/notifications/processor` | 回调路径（拼在 `api_prefix` 之后） |
 | `minio.endpoint` | — | MinIO 地址（不含 scheme） |
@@ -175,7 +181,7 @@ YAML 里这些字段保持空即可；生产中不要把密钥写入 YAML。
 
 ## 5. 日志
 
-- 位置：`logging.dir`（默认 `/var/log/prediction-bridge/prediction-bridge.log`）+ stderr。
+- 位置：`logging.dir`（裸机默认 `/data/deploy/log/prediction-bridge/prediction-bridge.log`；容器内 `/var/log/prediction-bridge/prediction-bridge.log`）+ stderr。
 - 格式：JSON 行（`logging.json=true`）。
 - 每行包含 `timestamp / level / message / trace_id / stage / extra`。
 - 敏感字段（`app_secret / access_key / secret_key / token`）在日志里自动脱敏。
@@ -183,11 +189,11 @@ YAML 里这些字段保持空即可；生产中不要把密钥写入 YAML。
 常用 grep：
 
 ```bash
-# 查看一个 trace 的完整链路
-grep '"trace_id":"<uuid>"' /var/log/prediction-bridge/prediction-bridge.log
+# 查看一个 trace 的完整链路（裸机）
+grep '"trace_id":"<uuid>"' /data/deploy/log/prediction-bridge/prediction-bridge.log
 
 # 仅看失败
-grep '"stage":"predict"' /var/log/prediction-bridge/prediction-bridge.log | jq 'select(.level=="ERROR")'
+grep '"stage":"predict"' /data/deploy/log/prediction-bridge/prediction-bridge.log | jq 'select(.level=="ERROR")'
 ```
 
 ## 6. 测试
@@ -214,17 +220,20 @@ python scripts/smoke_pipeline.py --archive /path/to/2026-03-26.tar.gz
 ## 7. 从 0 到 1 启动清单
 
 1. `cp config/config.example.yaml config/config.yaml`，填入 MinIO / 预测服务 / 飞书实参。
-2. 创建目录并授权：
+2. 创建目录并授权（裸机/systemd；容器不需要，Dockerfile 已处理）：
    ```bash
-   mkdir -p /var/lib/prediction-bridge/{downloads,reports} /var/log/prediction-bridge
-   mkdir -p /data/deploy/electricity-prediction/sfp2-deploy/traindata
+   sudo mkdir -p /data/deploy/prediction-bridge/{downloads,reports} \
+                /data/deploy/log/prediction-bridge \
+                /data/deploy/electricity-prediction/sfp2-deploy/traindata
+   sudo chown -R prediction-bridge:prediction-bridge \
+       /data/deploy/prediction-bridge /data/deploy/log/prediction-bridge
    ```
 3. 启动（选一）：
-   - 容器：`docker compose -f deploy/docker-compose.yaml up -d`
-   - 裸机：`./scripts/run_dev.sh 8080`
+   - 容器：`docker compose -f deploy/docker-compose.yaml up -d`（对外暴露 28042）
+   - 裸机：`./scripts/run_dev.sh 28042`
    - 生产：`systemctl enable --now prediction-bridge`
 4. 冒烟测试回调接口（见 3.1 的 curl）。
-5. 查询状态：`curl http://127.0.0.1:8080/api/v1/tasks/<trace_id>`。
+5. 查询状态：`curl http://127.0.0.1:28042/api/v1/tasks/<trace_id>`。
 6. 预期产物：
    - `<traindata_root>/2026-03-26/`（数据日期）
    - `<report.output_dir>/prediction_2026-03-27.md`（预测目标日）
