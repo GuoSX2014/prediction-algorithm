@@ -3,7 +3,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    image: prediction-bridge:0.1.0
+    image: prediction-bridge:latest
     container_name: prediction-bridge
     restart: unless-stopped
     ports:
