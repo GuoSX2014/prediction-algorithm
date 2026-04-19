@@ -17,7 +17,7 @@ minio:
   # Object prefix inside the bucket (derived from download_url — e.g. "output/").
   # Leave empty if object_name is already a full key.
   object_prefix: output/
-  download_dir: /data/deploy/prediction-bridge/downloads
+  download_dir: /var/lib/prediction-bridge/downloads
   md5_retry: 3
   md5_retry_interval_sec: 5
   # If True, even when the MinIO SDK fails the service falls back to download_url directly.
@@ -37,7 +37,7 @@ predictor:
   retry_interval_sec: 10
 
 report:
-  output_dir: /data/deploy/prediction-bridge/reports
+  output_dir: /var/lib/prediction-bridge/reports
   template_path: app/templates/prediction.md.j2
 
 feishu:
@@ -58,7 +58,7 @@ feishu:
 task_store:
   # in_memory | sqlite
   backend: in_memory
-  sqlite_path: /data/deploy/prediction-bridge/tasks.sqlite
+  sqlite_path: /var/lib/prediction-bridge/tasks.sqlite
   # Time window in seconds in which the same (object_name, md5) returns the existing trace_id.
   dedup_ttl_sec: 900
 
@@ -69,7 +69,7 @@ concurrency:
 
 logging:
   level: INFO
-  dir: /data/deploy/log/prediction-bridge
+  dir: /var/log/prediction-bridge
   rotation: "100 MB"
   retention: "30 days"
   json: true
