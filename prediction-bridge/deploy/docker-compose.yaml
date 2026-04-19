@@ -3,8 +3,11 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
+      platforms:
+        - linux/amd64
     image: prediction-bridge:latest
     container_name: prediction-bridge
+    platform: linux/amd64
     restart: unless-stopped
     ports:
       # External 28042 (host-facing) -> container internal 8042
