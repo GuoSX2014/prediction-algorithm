@@ -53,6 +53,7 @@ class StorageSection(BaseModel):
 class PredictorSection(BaseModel):
     base_url: str = "http://127.0.0.1:9527"
     reload_before_predict: bool = False
+    reload_timeout_sec: int = 300
     reload_poll_interval_sec: int = 10
     timeout_sec: int = 60
     retry: int = 3

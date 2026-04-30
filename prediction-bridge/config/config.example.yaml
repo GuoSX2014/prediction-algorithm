@@ -32,6 +32,7 @@ storage:
 predictor:
   base_url: http://112.126.80.142:9527
   reload_before_predict: true
+  reload_timeout_sec: 300
   reload_poll_interval_sec: 10
   timeout_sec: 60
   retry: 3

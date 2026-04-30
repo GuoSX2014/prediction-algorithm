@@ -72,14 +72,13 @@ class PredictorClient:
         # Step 2: poll /reload/status until code=2 (success) or code=3 (failed)
         status_url = f"{base}/reload/status"
         poll_interval = self._cfg.reload_poll_interval_sec
-        # timeout_sec * 5 as upper bound for the entire reload
-        deadline = time.monotonic() + self._cfg.timeout_sec * 5
+        deadline = time.monotonic() + self._cfg.reload_timeout_sec
 
         while True:
             time.sleep(poll_interval)
             if time.monotonic() > deadline:
                 raise PredictorError(
-                    f"reload timed out after {self._cfg.timeout_sec * 5}s"
+                    f"reload timed out after {self._cfg.reload_timeout_sec}s"
                 )
             try:
                 poll_resp = httpx.get(status_url, timeout=self._cfg.timeout_sec)
