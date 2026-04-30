@@ -17,7 +17,7 @@ prediction-bridge  ── 202 Accepted {trace_id}
    ├─ pending
    ├─ downloading   ← MinIO SDK (fallback: download_url)
    ├─ extracting    ← 解压 + 原子移动到 <traindata_root>/<data_date>/
-   ├─ (optional) POST /datasets/rebuild
+   ├─ (optional) POST /reload → poll GET /reload/status
    ├─ predicting    ← POST /predict?date=<data_date + 1 day>
    ├─ notifying     ← 渲染 Markdown → 飞书 upload_file + text@all + file
    └─ done | failed
@@ -34,13 +34,16 @@ prediction-bridge  ── 202 Accepted {trace_id}
 cp config/config.example.yaml config/config.yaml
 # 编辑 minio / feishu / storage / predictor 的参数
 
-# 2) 构建镜像
-docker compose -f deploy/docker-compose.yaml build
+# 2) 首次构建基础镜像（仅 requirements.txt 变化时需要重建）
+docker compose -f deploy/docker-compose.yaml --profile build build prediction-bridge-base
 
-# 3) 启动（注意挂载 traindata 宿主机目录）
+# 3) 构建应用镜像（日常改代码后只需这一步）
+docker compose -f deploy/docker-compose.yaml build prediction-bridge
+
+# 4) 启动（注意挂载 traindata 宿主机目录）
 docker compose -f deploy/docker-compose.yaml up -d
 
-# 4) 查看日志
+# 5) 查看日志
 docker compose -f deploy/docker-compose.yaml logs -f
 ```
 
@@ -154,7 +157,8 @@ curl http://127.0.0.1:28042/health
 | `storage.on_conflict` | `overwrite` | `overwrite` / `skip` |
 | `storage.keep_failed_artifacts` | `true` | 失败时保留临时文件便于排查 |
 | `predictor.base_url` | — | **必填**，SFP-2 base URL |
-| `predictor.rebuild_dataset_before_predict` | `false` | 预测前是否先触发 `/datasets/rebuild` |
+| `predictor.reload_before_predict` | `false` | 预测前是否先触发 `POST /reload` 并轮询 `/reload/status` 等待完成 |
+| `predictor.reload_poll_interval_sec` | `10` | reload 状态轮询间隔（秒） |
 | `predictor.retry` / `retry_interval_sec` | `3` / `10` | 指数退避（首次间隔、最长 8×） |
 | `report.output_dir` | — | Markdown 报告输出目录 |
 | `report.template_path` | `app/templates/prediction.md.j2` | Jinja2 模板路径 |

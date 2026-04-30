@@ -1,27 +1,8 @@
-# ---- builder ----
-FROM python:3.13-slim AS builder
-
-ENV PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PYTHONDONTWRITEBYTECODE=1
-
-WORKDIR /build
-COPY requirements.txt .
-RUN pip install --prefix=/install -r requirements.txt
-
-# ---- runtime ----
-FROM python:3.13-slim
-
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PREDICTION_BRIDGE_CONFIG_PATH=/app/config/config.yaml
-
-RUN useradd --system --uid 10001 --home-dir /app --shell /usr/sbin/nologin prediction-bridge \
- && mkdir -p /var/lib/prediction-bridge/downloads /var/lib/prediction-bridge/reports /var/log/prediction-bridge \
- && chown -R prediction-bridge:prediction-bridge /var/lib/prediction-bridge /var/log/prediction-bridge
+# ---- runtime (based on pre-built base image with dependencies) ----
+# Build base image first:  docker build -f deploy/Dockerfile.base -t prediction-bridge-base:latest .
+FROM prediction-bridge-base:latest
 
 WORKDIR /app
-COPY --from=builder /install /usr/local
 COPY app ./app
 COPY config ./config
 

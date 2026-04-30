@@ -1,4 +1,17 @@
 services:
+  prediction-bridge-base:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.base
+      platforms:
+        - linux/amd64
+    image: prediction-bridge-base:latest
+    platform: linux/amd64
+    # This service only exists to build the base image; it never runs.
+    entrypoint: ["true"]
+    profiles:
+      - build
+
   prediction-bridge:
     build:
       context: ..
