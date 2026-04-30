@@ -166,10 +166,10 @@ class Pipeline:
                     {"traindata_dir": str(target)},
                 )
 
-            # --- (optional) rebuild dataset ---
-            if self._settings.predictor.rebuild_dataset_before_predict:
-                with stage_context("rebuild_dataset"):
-                    self._predictor.rebuild_dataset()
+            # --- (optional) reload data ---
+            if self._settings.predictor.reload_before_predict:
+                with stage_context("reload"):
+                    self._predictor.reload()
 
             # --- predict ---
             self._store.update(trace_id, status=TaskStageEnum.PREDICTING)

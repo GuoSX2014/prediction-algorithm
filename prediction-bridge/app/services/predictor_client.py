@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any, Dict
 
 import httpx
@@ -47,25 +48,73 @@ class PredictorClient:
         except RetryError as exc:  # pragma: no cover — reraise=True short-circuits this
             raise PredictorError(f"predict failed: {exc}") from exc
 
-    def rebuild_dataset(self) -> Dict[str, Any]:
-        url = f"{self._cfg.base_url.rstrip('/')}/datasets/rebuild"
-        logger.info("triggering dataset rebuild", extra={"url": url})
+    def reload(self) -> Dict[str, Any]:
+        """Trigger async data reload, then poll until complete."""
+        base = self._cfg.base_url.rstrip("/")
+
+        # Step 1: trigger reload
+        trigger_url = f"{base}/reload"
+        logger.info("triggering data reload", extra={"url": trigger_url})
         try:
-            resp = httpx.post(url, timeout=self._cfg.timeout_sec * 5)
+            resp = httpx.post(trigger_url, timeout=self._cfg.timeout_sec)
         except httpx.HTTPError as exc:
-            raise PredictorError(f"dataset rebuild network error: {exc}") from exc
+            raise PredictorError(f"reload trigger network error: {exc}") from exc
         if resp.status_code >= 400:
             raise PredictorError(
-                f"dataset rebuild failed: {resp.status_code} {resp.text[:500]}"
+                f"reload trigger failed: {resp.status_code} {resp.text[:500]}"
             )
-        return resp.json()
+        trigger_body = resp.json()
+        logger.info(
+            "reload triggered",
+            extra={"status_code": resp.status_code, "body": trigger_body},
+        )
+
+        # Step 2: poll /reload/status until code=2 (success) or code=3 (failed)
+        status_url = f"{base}/reload/status"
+        poll_interval = self._cfg.reload_poll_interval_sec
+        # timeout_sec * 5 as upper bound for the entire reload
+        deadline = time.monotonic() + self._cfg.timeout_sec * 5
+
+        while True:
+            time.sleep(poll_interval)
+            if time.monotonic() > deadline:
+                raise PredictorError(
+                    f"reload timed out after {self._cfg.timeout_sec * 5}s"
+                )
+            try:
+                poll_resp = httpx.get(status_url, timeout=self._cfg.timeout_sec)
+            except httpx.HTTPError as exc:
+                logger.warning("reload status poll error", extra={"error": str(exc)})
+                continue
+
+            poll_body = poll_resp.json()
+            code = poll_body.get("code")
+            logger.info(
+                "reload status poll",
+                extra={"status_code": poll_resp.status_code, "body": poll_body},
+            )
+
+            if code == 2:
+                logger.info("reload completed successfully", extra={"body": poll_body})
+                return poll_body
+            if code == 3:
+                error_msg = poll_body.get("error", poll_body.get("message", "unknown"))
+                raise PredictorError(f"reload failed: {error_msg}")
+            # code 0 (idle) or 1 (running) — keep polling
 
     def health(self) -> bool:
         url = f"{self._cfg.base_url.rstrip('/')}/health"
         try:
             resp = httpx.get(url, timeout=5)
-            return resp.status_code == 200 and resp.json().get("status") == "ok"
+            body = resp.json()
+            healthy = resp.status_code == 200 and body.get("status") == "ready"
+            logger.info(
+                "health check response",
+                extra={"status_code": resp.status_code, "body": body, "healthy": healthy},
+            )
+            return healthy
         except Exception:
+            logger.warning("health check failed", exc_info=True)
             return False
 
     # ------------------------------------------------------------------ #
@@ -93,12 +142,17 @@ class PredictorClient:
             raise PredictorStartingError(resp.text[:500])
 
         if resp.status_code >= 400:
-            # 4xx/5xx that is not 503 — terminal.
             raise PredictorError(
                 f"predict {resp.status_code}: {resp.text[:500]}"
             )
 
         try:
-            return resp.json()
+            result = resp.json()
         except ValueError as exc:
             raise PredictorError(f"predict returned invalid JSON: {exc}") from exc
+
+        logger.info(
+            "predict response",
+            extra={"status_code": resp.status_code, "body": result},
+        )
+        return result

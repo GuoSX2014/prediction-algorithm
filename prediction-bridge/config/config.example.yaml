@@ -31,7 +31,8 @@ storage:
 
 predictor:
   base_url: http://112.126.80.142:9527
-  rebuild_dataset_before_predict: false
+  reload_before_predict: true
+  reload_poll_interval_sec: 10
   timeout_sec: 60
   retry: 3
   retry_interval_sec: 10
@@ -60,7 +61,7 @@ task_store:
   backend: in_memory
   sqlite_path: /var/lib/prediction-bridge/tasks.sqlite
   # Time window in seconds in which the same (object_name, md5) returns the existing trace_id.
-  dedup_ttl_sec: 900
+  dedup_ttl_sec: 10
 
 concurrency:
   # serial | thread_pool
