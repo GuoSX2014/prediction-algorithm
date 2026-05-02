@@ -57,7 +57,6 @@ class ReportRenderer:
             "predict_date": predict_date,
             "data_date": data_date,
             "trace_id": trace_id,
-            "model_version": prediction.get("model_version", "unknown"),
             "generated_at": prediction.get(
                 "generated_at", datetime.now(timezone.utc).isoformat()
             ),
@@ -65,7 +64,11 @@ class ReportRenderer:
             "segments": segments_for_template,
             "segment_keys": list(SEGMENTS),
             "metric_keys": list(METRICS),
-            "raw_json": json.dumps(prediction, ensure_ascii=False, indent=2),
+            "raw_json": json.dumps(
+                {k: v for k, v in prediction.items() if k != "model_version"},
+                ensure_ascii=False,
+                indent=2,
+            ),
         }
 
         tpl = self._env.get_template(self._template_name)
