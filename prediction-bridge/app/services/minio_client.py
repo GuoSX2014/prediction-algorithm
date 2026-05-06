@@ -44,6 +44,7 @@ class MinioDownloader:
     def __init__(self, cfg: MinioSection) -> None:
         self._cfg = cfg
         Path(cfg.download_dir).mkdir(parents=True, exist_ok=True)
+        self._client: Optional[object] = None  # Cached Minio client instance
 
     # ------------------------------------------------------------------ #
     # Public API
@@ -154,16 +155,20 @@ class MinioDownloader:
         self._download_via_http(download_url, dest)
 
     def _sdk_client(self):
+        """Get or create cached Minio client instance."""
+        if self._client is not None:
+            return self._client
         if Minio is None:
             return None
         if not self._cfg.endpoint or not self._cfg.access_key or not self._cfg.secret_key:
             return None
-        return Minio(
+        self._client = Minio(
             self._cfg.endpoint,
             access_key=self._cfg.access_key,
             secret_key=self._cfg.secret_key,
             secure=self._cfg.secure,
         )
+        return self._client
 
     def _full_object_name(self, object_name: str, download_url: str) -> str:
         """Join configured prefix with object_name.

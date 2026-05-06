@@ -28,6 +28,9 @@ storage:
   traindata_root: /data/deploy/electricity-prediction/sfp2-deploy/traindata
   on_conflict: overwrite     # overwrite | skip
   keep_failed_artifacts: true
+  # Maximum number of failed task artifacts (archives) to keep in download_dir.
+  # Oldest files are automatically deleted when this limit is exceeded.
+  max_failed_artifacts: 10
 
 predictor:
   base_url: http://112.126.80.142:9527
@@ -63,6 +66,12 @@ task_store:
   sqlite_path: /var/lib/prediction-bridge/tasks.sqlite
   # Time window in seconds in which the same (object_name, md5) returns the existing trace_id.
   dedup_ttl_sec: 10
+  # Maximum number of task records to keep in memory/database (LRU eviction).
+  # Prevents unbounded memory growth in long-running services.
+  max_records: 500
+  # Auto-delete task records older than this many days.
+  # Set to 0 to disable time-based expiration (only use max_records limit).
+  expire_after_days: 7
 
 concurrency:
   # serial | thread_pool

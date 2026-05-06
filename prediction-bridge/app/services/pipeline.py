@@ -238,6 +238,8 @@ class Pipeline:
     ) -> None:
         keep = self._settings.storage.keep_failed_artifacts and failed
         if keep:
+            # Keep this failed artifact, but enforce max_failed_artifacts limit
+            self._evict_old_failed_artifacts()
             logger.info(
                 "keeping failed artifacts for debugging",
                 extra={"archive": str(archive_path) if archive_path else None,
@@ -251,6 +253,38 @@ class Pipeline:
                 logger.opt(exception=True).warning("archive cleanup failed")
         if workdir and workdir.exists():
             shutil.rmtree(workdir, ignore_errors=True)
+
+    def _evict_old_failed_artifacts(self) -> None:
+        """Remove oldest failed artifacts when exceeding max_failed_artifacts limit."""
+        download_dir = Path(self._settings.minio.download_dir)
+        if not download_dir.exists():
+            return
+
+        max_artifacts = self._settings.storage.max_failed_artifacts
+        if max_artifacts <= 0:
+            return
+
+        # Collect all archive files sorted by modification time (oldest first)
+        archives = sorted(
+            [f for f in download_dir.iterdir() if f.is_file()],
+            key=lambda p: p.stat().st_mtime
+        )
+
+        # Remove oldest files if we exceed the limit
+        to_remove = len(archives) - max_artifacts
+        if to_remove > 0:
+            for archive in archives[:to_remove]:
+                try:
+                    archive.unlink()
+                    logger.info(
+                        "evicted old failed artifact",
+                        extra={"path": str(archive)}
+                    )
+                except OSError:
+                    logger.opt(exception=True).warning(
+                        "failed to evict old artifact",
+                        extra={"path": str(archive)}
+                    )
 
     def _alert(self, trace_id: str, exc: BaseException) -> None:
         try:

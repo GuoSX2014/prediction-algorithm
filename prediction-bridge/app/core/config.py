@@ -48,6 +48,7 @@ class StorageSection(BaseModel):
     traindata_root: str = "/data/deploy/electricity-prediction/sfp2-deploy/traindata"
     on_conflict: Literal["overwrite", "skip"] = "overwrite"
     keep_failed_artifacts: bool = True
+    max_failed_artifacts: int = 10  # Maximum number of failed task artifacts to keep
 
 
 class PredictorSection(BaseModel):
@@ -87,6 +88,8 @@ class TaskStoreSection(BaseModel):
     backend: Literal["in_memory", "sqlite"] = "in_memory"
     sqlite_path: str = "/var/lib/prediction-bridge/tasks.sqlite"
     dedup_ttl_sec: int = 900
+    max_records: int = 500  # Maximum number of task records to keep in memory
+    expire_after_days: int = 7  # Auto-delete records older than this many days
 
 
 class ConcurrencySection(BaseModel):

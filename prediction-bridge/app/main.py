@@ -27,7 +27,10 @@ from .services.report_renderer import ReportRenderer
 
 def _build_components(settings: Settings):
     task_store = build_task_store(
-        settings.task_store.backend, settings.task_store.sqlite_path
+        settings.task_store.backend,
+        settings.task_store.sqlite_path,
+        settings.task_store.max_records,
+        settings.task_store.expire_after_days,
     )
     downloader = MinioDownloader(settings.minio)
     predictor = PredictorClient(settings.predictor)

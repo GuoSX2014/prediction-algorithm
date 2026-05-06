@@ -22,24 +22,24 @@ from ..core.logging import logger
 class PredictorClient:
     def __init__(self, cfg: PredictorSection) -> None:
         self._cfg = cfg
-
-    # ------------------------------------------------------------------ #
-
-    def predict(self, predict_date: str) -> Dict[str, Any]:
-        retrying = retry(
+        # Cache the retry decorator to avoid recreating it on every predict() call
+        self._retrying = retry(
             reraise=True,
-            stop=stop_after_attempt(max(1, self._cfg.retry)),
+            stop=stop_after_attempt(max(1, cfg.retry)),
             wait=wait_exponential(
-                multiplier=self._cfg.retry_interval_sec,
-                min=self._cfg.retry_interval_sec,
-                max=self._cfg.retry_interval_sec * 8,
+                multiplier=cfg.retry_interval_sec,
+                min=cfg.retry_interval_sec,
+                max=cfg.retry_interval_sec * 8,
             ),
             retry=retry_if_exception_type(
                 (PredictorStartingError, httpx.HTTPError)
             ),
         )
 
-        @retrying
+    # ------------------------------------------------------------------ #
+
+    def predict(self, predict_date: str) -> Dict[str, Any]:
+        @self._retrying
         def _call() -> Dict[str, Any]:
             return self._do_predict(predict_date)
 
